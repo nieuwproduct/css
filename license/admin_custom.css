@@ -1,0 +1,21 @@
+.inline-related {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.inline-related .form-row {
+    width: 45%; /* Adjust this as needed */
+    margin-bottom: 5px;
+}
+
+.inline-related .form-row label {
+    display: inline-block;
+    width: auto;
+    margin-right: 10px;
+}
+
+.inline-related .form-row input,
+.inline-related .form-row select {
+    width: auto;
+}
