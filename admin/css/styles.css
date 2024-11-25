@@ -1,0 +1,36 @@
+/* Light Theme (Default) */
+body {
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+/* Dark Theme */
+body.dark-mode {
+    background-color: #212529;
+    color: #f8f9fa;
+}
+
+.navbar.dark-mode {
+    background-color: #343a40 !important;
+}
+
+.table.dark-mode {
+    color: #f8f9fa;
+}
+
+.table.dark-mode th,
+.table.dark-mode td {
+    border-color: #454d55;
+}
+
+.btn-outline-secondary.dark-mode {
+    color: #f8f9fa;
+    border-color: #f8f9fa;
+}
+
+.btn-outline-secondary.dark-mode:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+/* Additional dark mode styles as needed */
