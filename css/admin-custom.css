@@ -1,0 +1,123 @@
+/* Material Dashboard Admin Custom Styles */
+
+.content-wrapper {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border: 0;
+    margin-bottom: 30px;
+    margin-top: 30px;
+    border-radius: 6px;
+    color: #333333;
+    background: #fff;
+    width: 100%;
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    border-radius: 3px;
+    padding: 1rem 15px;
+    margin-left: 15px;
+    margin-right: 15px;
+    margin-top: -30px;
+    border: 0;
+    background: linear-gradient(60deg, #ab47bc, #8e24aa);
+}
+
+.card-title {
+    margin-top: 0;
+    margin-bottom: 3px;
+    color: #fff;
+    font-size: 1.125rem;
+    font-weight: 300;
+}
+
+.table > thead > tr > th {
+    border-bottom-width: 1px;
+    font-size: 1.0625rem;
+    font-weight: 300;
+    border: 0;
+}
+
+.btn {
+    padding: 12px 30px;
+    margin: 5px 1px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    border: 0;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.btn.btn-primary {
+    color: #fff;
+    background-color: #9c27b0;
+    border-color: #9c27b0;
+    box-shadow: 0 2px 2px 0 rgba(156, 39, 176, 0.14), 0 3px 1px -2px rgba(156, 39, 176, 0.2), 0 1px 5px 0 rgba(156, 39, 176, 0.12);
+}
+
+.form-control {
+    height: 36px;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #d2d2d2;
+    border-radius: 4px;
+    box-shadow: none;
+}
+
+.form-control:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #9c27b0;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(156, 39, 176, 0.25);
+}
+
+#header {
+    height: 60px;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.breadcrumbs {
+    padding: 8px 15px;
+    margin-bottom: 20px;
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    margin: 0;
+    padding: 8px;
+    font-weight: 400;
+    font-size: 13px;
+    text-align: left;
+    background: #9c27b0;
+    color: #fff;
+}
+
+.submit-row {
+    padding: 12px 14px;
+    margin: 0 0 20px;
+    background: #f8f9fa;
+    border: none;
+    border-radius: 4px;
+}
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background: #9c27b0;
+    padding: 10px 20px;
+    color: #fff;
+    border-radius: 3px;
+    text-decoration: none;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+} 
