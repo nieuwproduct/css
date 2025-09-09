@@ -401,9 +401,9 @@ configure_client() {
     echo
     
     # Server URL
-    read -p "Enter server URL [https://nptest.vanbreda.nl]: " SERVER_URL
+    read -p "Enter server URL [https://nencloud.vanbreda.nl]: " SERVER_URL
     if [[ -z "$SERVER_URL" ]]; then
-        SERVER_URL="https://nptest.vanbreda.nl"
+        SERVER_URL="https://nencloud.vanbreda.nl"
     fi
     
     # Authentication token
@@ -428,8 +428,8 @@ configure_client() {
     APP_CONFIG_DIR=${APP_CONFIG_DIR:-/etc/app}
     
     # Sync interval
-    read -p "Enter sync interval in minutes [60]: " SYNC_INTERVAL
-    SYNC_INTERVAL=${SYNC_INTERVAL:-60}
+    read -p "Enter sync interval in minutes [5]: " SYNC_INTERVAL
+    SYNC_INTERVAL=${SYNC_INTERVAL:-5}
     
     # Create config file
     cat > $CONFIG_DIR/client.json << EOF
