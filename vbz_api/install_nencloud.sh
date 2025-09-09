@@ -424,8 +424,8 @@ configure_client() {
     read -p "Enter location ID (or press Enter for global config): " LOCATION_ID
     
     # Config directory
-    read -p "Enter application config directory [/etc/app]: " APP_CONFIG_DIR
-    APP_CONFIG_DIR=${APP_CONFIG_DIR:-/etc/app}
+    read -p "Enter application config directory [/etc/nencloud]: " APP_CONFIG_DIR
+    APP_CONFIG_DIR=${APP_CONFIG_DIR:-/etc/nencloud}
     
     # Sync interval
     read -p "Enter sync interval in minutes [5]: " SYNC_INTERVAL
@@ -511,7 +511,7 @@ class NencloudDaemon:
             self.auth_token = config['auth_token']
             self.api_username = config['api_username']
             self.location_id = config.get('location_id')
-            self.local_config_path = config.get('local_config_path', '/etc/app/appsettings.json')
+            self.local_config_path = config.get('local_config_path', '/etc/nencloud/appsettings.json')
             self.sync_interval = config.get('sync_interval_minutes', 60) * 60
             self.backup_dir = config.get('backup_dir')
             
