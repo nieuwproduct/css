@@ -606,26 +606,24 @@ class NencloudDaemon:
     
     def restart_nencloud_service(self):
         """Restart the nencloud service after configuration changes."""
+        import subprocess
+    
         try:
-            import subprocess
-            # Try with sudo first
-            result = subprocess.run(['systemctl', 'restart', 'nencloud'], 
-                                  capture_output=True, text=True, timeout=60)
+            result = subprocess.run(
+                ['systemctl', 'restart', 'nencloud'],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
             if result.returncode == 0:
                 self.logger.info("Successfully restarted nencloud service")
             else:
-                # If sudo fails, try without sudo (in case user has direct permissions)
-                self.logger.warning("sudo failed, trying without sudo...")
-                result = subprocess.run(['systemctl', 'restart', 'nencloud'], 
-                                      capture_output=True, text=True, timeout=60)
-                if result.returncode == 0:
-                    self.logger.info("Successfully restarted nencloud service (without sudo)")
-                else:
-                    self.logger.error(f"Failed to restart nencloud service: {result.stderr}")
+                self.logger.error(f"Failed to restart nencloud service: {result.stderr.strip()}")
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout while restarting nencloud service")
         except Exception as e:
             self.logger.error(f"Error restarting nencloud service: {e}")
+    
     
     def run(self):
         """Main daemon loop."""
