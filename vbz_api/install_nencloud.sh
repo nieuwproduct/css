@@ -511,7 +511,7 @@ class NencloudDaemon:
             self.auth_token = config['auth_token']
             self.api_username = config['api_username']
             self.location_id = config.get('location_id')
-            self.local_config_path = config.get('local_config_path', '/etc/nencloud/appsettings.json')
+            self.local_config_path = config.get('local_config_path', '/etc/app/appsettings.json')
             self.sync_interval = config.get('sync_interval_minutes', 60) * 60
             self.backup_dir = config.get('backup_dir')
             
@@ -540,6 +540,8 @@ class NencloudDaemon:
             if self.syncer.needs_sync(server_config):
                 if self.syncer.save_config(server_config):
                     self.logger.info("Configuration synchronized successfully - changes detected")
+                    # Restart nencloud service after successful config sync
+                    self.restart_nencloud_service()
                 else:
                     self.logger.error("Failed to save configuration")
             else:
@@ -547,6 +549,21 @@ class NencloudDaemon:
                 
         except Exception as e:
             self.logger.error(f"Sync failed: {e}")
+    
+    def restart_nencloud_service(self):
+        """Restart the nencloud service after configuration changes."""
+        try:
+            import subprocess
+            result = subprocess.run(['systemctl', 'restart', 'nencloud'], 
+                                  capture_output=True, text=True, timeout=60)
+            if result.returncode == 0:
+                self.logger.info("Successfully restarted nencloud service")
+            else:
+                self.logger.error(f"Failed to restart nencloud service: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            self.logger.error("Timeout while restarting nencloud service")
+        except Exception as e:
+            self.logger.error(f"Error restarting nencloud service: {e}")
     
     def run(self):
         """Main daemon loop."""
