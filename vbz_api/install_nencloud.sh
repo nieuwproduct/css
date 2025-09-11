@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.2.0"
 
 # Print colored output
 print_info() {
