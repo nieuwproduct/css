@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.2.0"
+SCRIPT_VERSION="1.3.0"
 
 # Print colored output
 print_info() {
@@ -392,6 +392,51 @@ EOF
     print_success "Client files downloaded and installed"
 }
 
+# Check location availability
+check_location_availability() {
+    local server_url="$1"
+    local auth_token="$2"
+    local location_id="$3"
+    
+    if [[ -z "$location_id" ]]; then
+        return 0  # Global config, no need to check
+    fi
+    
+    print_info "Checking location availability..."
+    
+    # Test connection and check location availability
+    local url="${server_url}/api/locations/${location_id}/availability/"
+    local headers=(
+        -H "Authorization: Token ${auth_token}"
+        -H "Content-Type: application/json"
+    )
+    
+    local response
+    if response=$(curl -s -w "\n%{http_code}" "${headers[@]}" "$url" 2>/dev/null); then
+        local http_code=$(echo "$response" | tail -n1)
+        local body=$(echo "$response" | head -n -1)
+        
+        if [[ "$http_code" == "200" ]]; then
+            local available=$(echo "$body" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('available', False))" 2>/dev/null)
+            local message=$(echo "$body" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('message', ''))" 2>/dev/null)
+            
+            if [[ "$available" == "True" ]]; then
+                print_success "Location is available: $message"
+                return 0
+            else
+                print_error "Location is not available: $message"
+                return 1
+            fi
+        else
+            print_warning "Could not check location availability (HTTP $http_code). Proceeding anyway..."
+            return 0
+        fi
+    else
+        print_warning "Could not check location availability. Proceeding anyway..."
+        return 0
+    fi
+}
+
 # Interactive configuration
 configure_client() {
     print_info "Setting up Nencloud client configuration..."
@@ -422,6 +467,15 @@ configure_client() {
     
     # Location ID
     read -p "Enter location ID (or press Enter for global config): " LOCATION_ID
+    
+    # Check location availability if location ID is provided
+    if [[ -n "$LOCATION_ID" ]]; then
+        if ! check_location_availability "$SERVER_URL" "$AUTH_TOKEN" "$LOCATION_ID"; then
+            print_error "Cannot proceed with installation. Location is not available for new client connections."
+            print_info "Please check the admin panel to enable 'Allow Multiple Clients' for this location, or disconnect any existing clients."
+            exit 1
+        fi
+    fi
     
     # Config directory
     read -p "Enter application config directory [/etc/nencloud]: " APP_CONFIG_DIR
