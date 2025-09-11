@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.3.2"
+SCRIPT_VERSION="1.3.3"
 
 # Print colored output
 print_info() {
@@ -173,12 +173,20 @@ class NencloudClient:
     def test_connection(self) -> bool:
         """Test connection to server."""
         try:
-            url = f"{self.server_url}/api/config/"
+            # Use location-specific endpoint if location_id is provided
+            if self.location_id:
+                url = f"{self.server_url}/api/config/{self.location_id}/"
+            else:
+                url = f"{self.server_url}/api/config/"
+            
             headers = {
                 'Authorization': f'Token {self.auth_token}',
-                'X-API-Username': self.api_username,
                 'Content-Type': 'application/json'
             }
+            
+            # Only add X-API-Username header if we have a location_id
+            if self.location_id:
+                headers['X-API-Username'] = self.api_username
             
             print(f"Testing connection to: {url}")
             response = requests.get(url, headers=headers, timeout=self.timeout)
