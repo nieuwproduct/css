@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.3.1"
+SCRIPT_VERSION="1.3.2"
 
 # Print colored output
 print_info() {
@@ -609,7 +609,7 @@ class NencloudDaemon:
         try:
             import subprocess
             # Try with sudo first
-            result = subprocess.run(['sudo', 'systemctl', 'restart', 'nencloud'], 
+            result = subprocess.run(['systemctl', 'restart', 'nencloud'], 
                                   capture_output=True, text=True, timeout=60)
             if result.returncode == 0:
                 self.logger.info("Successfully restarted nencloud service")
@@ -729,22 +729,28 @@ EOF
     print_success "Log rotation configured"
 }
 
-# Setup sudoers for service restart
-setup_sudoers() {
-    print_info "Setting up sudoers for service restart..."
+# Setup polkit for service restart
+setup_polkit() {
+    print_info "Setting up polkit rule for service restart..."
     
-    # Create sudoers file for nencloud service restart
-    cat > /etc/sudoers.d/nencloud << EOF
-# Allow $USER_NAME to restart nencloud service without password
-$USER_NAME ALL=(ALL) NOPASSWD: /bin/systemctl restart nencloud
-$USER_NAME ALL=(ALL) NOPASSWD: /bin/systemctl reload nencloud
+    cat > /etc/polkit-1/rules.d/49-nencloud.rules << EOF
+// Allow $USER_NAME to restart/reload nencloud service without password
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.systemd1.restart-unit" ||
+         action.id == "org.freedesktop.systemd1.reload-or-restart" ||
+         action.id == "org.freedesktop.systemd1.manage-units") &&
+        subject.user == "$USER_NAME" &&
+        action.lookup("unit") == "nencloud.service") {
+        return polkit.Result.YES;
+    }
+});
 EOF
-    
-    # Set proper permissions
-    chmod 440 /etc/sudoers.d/nencloud
-    
-    print_success "Sudoers configured for service restart"
+
+    chmod 644 /etc/polkit-1/rules.d/49-nencloud.rules
+
+    print_success "Polkit rule configured for service restart"
 }
+
 
 # Test installation
 test_installation() {
@@ -996,7 +1002,7 @@ main() {
     create_daemon
     create_service
     setup_logging
-    setup_sudoers
+    setup_polkit
     test_installation
     start_services
     show_status
