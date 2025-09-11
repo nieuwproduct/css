@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.3.0"
+SCRIPT_VERSION="1.3.1"
 
 # Print colored output
 print_info() {
@@ -608,12 +608,20 @@ class NencloudDaemon:
         """Restart the nencloud service after configuration changes."""
         try:
             import subprocess
-            result = subprocess.run(['systemctl', 'restart', 'nencloud'], 
+            # Try with sudo first
+            result = subprocess.run(['sudo', 'systemctl', 'restart', 'nencloud'], 
                                   capture_output=True, text=True, timeout=60)
             if result.returncode == 0:
                 self.logger.info("Successfully restarted nencloud service")
             else:
-                self.logger.error(f"Failed to restart nencloud service: {result.stderr}")
+                # If sudo fails, try without sudo (in case user has direct permissions)
+                self.logger.warning("sudo failed, trying without sudo...")
+                result = subprocess.run(['systemctl', 'restart', 'nencloud'], 
+                                      capture_output=True, text=True, timeout=60)
+                if result.returncode == 0:
+                    self.logger.info("Successfully restarted nencloud service (without sudo)")
+                else:
+                    self.logger.error(f"Failed to restart nencloud service: {result.stderr}")
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout while restarting nencloud service")
         except Exception as e:
@@ -719,6 +727,23 @@ $LOG_DIR/*.log {
 EOF
 
     print_success "Log rotation configured"
+}
+
+# Setup sudoers for service restart
+setup_sudoers() {
+    print_info "Setting up sudoers for service restart..."
+    
+    # Create sudoers file for nencloud service restart
+    cat > /etc/sudoers.d/nencloud << EOF
+# Allow $USER_NAME to restart nencloud service without password
+$USER_NAME ALL=(ALL) NOPASSWD: /bin/systemctl restart nencloud
+$USER_NAME ALL=(ALL) NOPASSWD: /bin/systemctl reload nencloud
+EOF
+    
+    # Set proper permissions
+    chmod 440 /etc/sudoers.d/nencloud
+    
+    print_success "Sudoers configured for service restart"
 }
 
 # Test installation
@@ -971,6 +996,7 @@ main() {
     create_daemon
     create_service
     setup_logging
+    setup_sudoers
     test_installation
     start_services
     show_status
