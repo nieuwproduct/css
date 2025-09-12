@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.3.3"
+SCRIPT_VERSION="1.4.0"
 
 # Print colored output
 print_info() {
@@ -453,11 +453,9 @@ configure_client() {
     echo "Please provide the following information:"
     echo
     
-    # Server URL
-    read -p "Enter server URL [https://nencloud.vanbreda.nl]: " SERVER_URL
-    if [[ -z "$SERVER_URL" ]]; then
-        SERVER_URL="https://nencloud.vanbreda.nl"
-    fi
+    # Server URL - fixed value
+    SERVER_URL="https://nencloud.vanbreda.nl"
+    print_info "Using server URL: $SERVER_URL"
     
     # Authentication token
     read -p "Enter authentication token: " AUTH_TOKEN
@@ -485,9 +483,9 @@ configure_client() {
         fi
     fi
     
-    # Config directory
-    read -p "Enter application config directory [/etc/nencloud]: " APP_CONFIG_DIR
-    APP_CONFIG_DIR=${APP_CONFIG_DIR:-/etc/nencloud}
+    # Config directory - fixed value
+    APP_CONFIG_DIR="/etc/nencloud"
+    print_info "Using config directory: $APP_CONFIG_DIR"
     
     # Sync interval
     read -p "Enter sync interval in minutes [5]: " SYNC_INTERVAL
