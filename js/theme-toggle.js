@@ -21,37 +21,60 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function enableDarkMode() {
-        document.body.classList.add('dark-mode');
+    function styleNavbarForTheme(isDark) {
         const navbar = document.querySelector('.navbar');
-        if (navbar) {
-            navbar.classList.add('dark-mode');
+        if (!navbar) {
+            return;
         }
-        document.querySelectorAll('.card').forEach(card => card.classList.add('dark-mode'));
-        document.querySelectorAll('.table').forEach(table => table.classList.add('dark-mode'));
-        document.querySelectorAll('.btn-outline-secondary').forEach(btn => btn.classList.add('dark-mode'));
+
+        if (isDark) {
+            navbar.classList.add('dark-mode', 'navbar-dark', 'bg-dark');
+            navbar.classList.remove('navbar-light', 'bg-white');
+        } else {
+            navbar.classList.remove('dark-mode', 'navbar-dark', 'bg-dark');
+            navbar.classList.add('navbar-light', 'bg-white');
+        }
+    }
+
+    function toggleElementCollection(selector, className, enable) {
+        document.querySelectorAll(selector).forEach((element) => {
+            element.classList.toggle(className, enable);
+        });
+    }
+
+    function enableDarkMode() {
+        document.body.classList.add('dark-mode', 'bg-dark', 'text-light');
+        document.body.classList.remove('bg-light', 'text-dark');
+        styleNavbarForTheme(true);
+        toggleElementCollection('.card', 'dark-mode', true);
+        toggleElementCollection('.table', 'dark-mode', true);
+        toggleElementCollection('.btn-outline-secondary', 'dark-mode', true);
         const mainElement = document.querySelector('main');
         if (mainElement) {
             mainElement.classList.add('dark-mode');
         }
-        themeToggleBtn.innerHTML = '<i class="bi bi-sun-fill"></i>'; // Change icon to sun
+        toggleElementCollection('.modal-content', 'dark-mode', true);
+        toggleElementCollection('.accordion', 'dark-mode', true);
+        themeToggleBtn.innerHTML = '<i class="bi bi-sun-fill"></i>';
         localStorage.setItem('theme', 'dark');
+        document.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: 'dark' } }));
     }
 
     function enableLightMode() {
-        document.body.classList.remove('dark-mode');
-        const navbar = document.querySelector('.navbar');
-        if (navbar) {
-            navbar.classList.remove('dark-mode');
-        }
-        document.querySelectorAll('.card').forEach(card => card.classList.remove('dark-mode'));
-        document.querySelectorAll('.table').forEach(table => table.classList.remove('dark-mode'));
-        document.querySelectorAll('.btn-outline-secondary').forEach(btn => btn.classList.remove('dark-mode'));
+        document.body.classList.remove('dark-mode', 'bg-dark', 'text-light');
+        document.body.classList.add('bg-light', 'text-dark');
+        styleNavbarForTheme(false);
+        toggleElementCollection('.card', 'dark-mode', false);
+        toggleElementCollection('.table', 'dark-mode', false);
+        toggleElementCollection('.btn-outline-secondary', 'dark-mode', false);
         const mainElement = document.querySelector('main');
         if (mainElement) {
             mainElement.classList.remove('dark-mode');
         }
-        themeToggleBtn.innerHTML = '<i class="bi bi-moon-fill"></i>'; // Change icon to moon
+        toggleElementCollection('.modal-content', 'dark-mode', false);
+        toggleElementCollection('.accordion', 'dark-mode', false);
+        themeToggleBtn.innerHTML = '<i class="bi bi-moon-fill"></i>';
         localStorage.setItem('theme', 'light');
+        document.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: 'light' } }));
     }
 });

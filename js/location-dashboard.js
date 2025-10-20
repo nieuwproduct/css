@@ -78,8 +78,10 @@
             }
 
             fetch(`/get_vlans/?organization=${organizationId}`, {
+                credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
                 },
             })
                 .then(handleFormResponse)
@@ -102,8 +104,10 @@
         const initialOrganization = organizationSelect.value;
         if (initialOrganization) {
             fetch(`/get_vlans/?organization=${initialOrganization}`, {
+                credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
                 },
             })
                 .then(handleFormResponse)
@@ -133,7 +137,9 @@
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRFToken': getCsrfToken(),
+                    'Accept': 'application/json',
                 },
+                credentials: 'same-origin',
             })
                 .then(handleFormResponse)
                 .then((data) => {
@@ -170,7 +176,9 @@
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRFToken': getCsrfToken(),
+                    'Accept': 'application/json',
                 },
+                credentials: 'same-origin',
             })
                 .then(handleFormResponse)
                 .then((data) => {
@@ -200,8 +208,10 @@
         container.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status" aria-hidden="true"></div></div>';
 
         fetch(url, {
+            credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
             },
         })
             .then(handleFormResponse)
@@ -300,8 +310,10 @@
                 if (detailUrl && locationDetailModal && locationDetailBody) {
                     locationDetailBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status" aria-hidden="true"></div></div>';
                     fetch(detailUrl, {
+                        credentials: 'same-origin',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
                         },
                     })
                         .then(handleFormResponse)
