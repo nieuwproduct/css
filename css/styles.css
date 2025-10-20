@@ -10,6 +10,7 @@ body.dark-mode {
     color: #f8f9fa;
 }
 
+/* Cards */
 .card.shadow-sm {
     border: none;
     border-radius: 0.75rem;
@@ -20,10 +21,12 @@ body.dark-mode {
     background-color: transparent;
 }
 
+/* Accordion */
 .accordion-button {
     font-weight: 600;
 }
 
+/* Tables - Base */
 .table thead th {
     text-transform: uppercase;
     font-size: 0.75rem;
@@ -31,19 +34,12 @@ body.dark-mode {
     color: #6c757d;
 }
 
+/* Navbar */
 .navbar.dark-mode {
     background-color: #343a40 !important;
 }
 
-.table.dark-mode {
-    color: #f8f9fa;
-}
-
-.table.dark-mode th,
-.table.dark-mode td {
-    border-color: #454d55;
-}
-
+/* Buttons */
 .btn-outline-secondary.dark-mode {
     color: #f8f9fa;
     border-color: #f8f9fa;
@@ -54,11 +50,12 @@ body.dark-mode {
     border-color: #6c757d;
 }
 
-/* Global dark mode refinements */
+/* Global Dark Mode Refinements */
 body.dark-mode a {
     color: #9ec5fe;
 }
 
+/* Cards (Dark) */
 body.dark-mode .card,
 .card.dark-mode {
     background-color: #1f2328;
@@ -72,6 +69,7 @@ body.dark-mode .card .card-header,
     border-bottom: 1px solid #2d3238;
 }
 
+/* Muted Text */
 body.dark-mode .card .text-muted,
 body.dark-mode .text-muted,
 .card.dark-mode .text-muted,
@@ -79,6 +77,7 @@ body.dark-mode .text-muted,
     color: #adb5bd !important;
 }
 
+/* Text */
 body.dark-mode .text-body,
 body.dark-mode .text-body-emphasis,
 .dark-mode .text-body,
@@ -86,6 +85,7 @@ body.dark-mode .text-body-emphasis,
     color: #f8f9fa !important;
 }
 
+/* Accordion Items */
 body.dark-mode .accordion-item,
 .accordion-item.dark-mode {
     background-color: #1f2328;
@@ -111,12 +111,14 @@ body.dark-mode .accordion-button::after,
     filter: invert(1) hue-rotate(180deg);
 }
 
+/* Accordion Body */
 body.dark-mode .accordion-body,
 .accordion-body.dark-mode {
     background-color: #181b1f;
     color: #f8f9fa;
 }
 
+/* Badges */
 body.dark-mode .badge.bg-primary-subtle,
 .badge.bg-primary-subtle.dark-mode {
     background-color: rgba(13, 110, 253, 0.18);
@@ -135,11 +137,23 @@ body.dark-mode .badge.bg-success-subtle,
     color: #75b798;
 }
 
+/* === TABLES === */
 body.dark-mode .table,
 .table.dark-mode {
     color: #f8f9fa;
 }
 
+/* Fix for .table-light */
+body.dark-mode .table.table-light,
+body.dark-mode .table thead.table-light,
+body.dark-mode .table.table-light th,
+body.dark-mode .table.table-light td {
+    background-color: #2c3035 !important;
+    color: #f8f9fa !important;
+    border-color: #2d3238 !important;
+}
+
+/* Header and border styling */
 body.dark-mode .table thead th,
 body.dark-mode .table-light th,
 .table.dark-mode thead th,
@@ -149,22 +163,26 @@ body.dark-mode .table-light th,
     border-color: #2d3238;
 }
 
+/* Body cells */
 body.dark-mode .table tbody td,
 .table.dark-mode tbody td {
     border-color: #2d3238;
 }
 
+/* Zebra stripes */
 body.dark-mode .table-striped > tbody > tr:nth-of-type(odd),
 .table.dark-mode.table-striped > tbody > tr:nth-of-type(odd) {
     background-color: #1f2328;
 }
 
+/* Hover */
 body.dark-mode .table-hover > tbody > tr:hover,
 .table.dark-mode.table-hover > tbody > tr:hover {
     color: #f8f9fa;
     background-color: #2c3035;
 }
 
+/* Buttons (Outline) */
 body.dark-mode .btn-outline-secondary,
 .btn-outline-secondary.dark-mode {
     color: #f8f9fa;
@@ -196,6 +214,7 @@ body.dark-mode .btn-outline-primary:hover,
     color: #f8f9fa;
 }
 
+/* Inputs */
 body.dark-mode .input-group-text,
 .input-group-text.dark-mode {
     background-color: #181b1f;
@@ -216,6 +235,7 @@ body.dark-mode .form-select:focus,
     color: #f8f9fa;
 }
 
+/* Modals */
 body.dark-mode .modal-content,
 .modal-content.dark-mode {
     background-color: #1f2328;
@@ -230,6 +250,7 @@ body.dark-mode .modal-footer,
     border-color: #2d3238;
 }
 
+/* Typography */
 body.dark-mode .fw-semibold,
 body.dark-mode .fw-semibold.flex-grow-1,
 .dark-mode .fw-semibold,
@@ -237,6 +258,7 @@ body.dark-mode .fw-semibold.flex-grow-1,
     color: #f8f9fa;
 }
 
+/* Lists */
 body.dark-mode .list-unstyled li,
 .list-unstyled.dark-mode li {
     color: #dee2e6;
