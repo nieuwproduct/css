@@ -161,9 +161,111 @@
         });
     }
 
+    function setupLocationSiteAutoCalculation(container) {
+        const formElement = container.querySelector('#location-site-form');
+        if (!formElement) {
+            return;
+        }
+
+        const calculateUrl = formElement.dataset.calculateUrl;
+        const networkInput = formElement.querySelector('.js-location-site-network');
+        const cidrInput = formElement.querySelector('.js-location-site-cidr');
+        const gatewayInput = formElement.querySelector('.js-location-site-gateway');
+        const broadcastInput = formElement.querySelector('.js-location-site-broadcast');
+        const availableIpsInput = formElement.querySelector('.js-location-site-available');
+
+        if (!calculateUrl || !networkInput || !cidrInput || !gatewayInput || !broadcastInput || !availableIpsInput) {
+            return;
+        }
+
+        let debounceTimer = null;
+        let abortController = null;
+
+        const resetFields = () => {
+            gatewayInput.value = '';
+            broadcastInput.value = '';
+            availableIpsInput.value = '';
+        };
+
+        const performCalculation = () => {
+            const network = networkInput.value.trim();
+            const cidr = cidrInput.value.trim();
+
+            if (!network || !cidr) {
+                resetFields();
+                return;
+            }
+
+            if (abortController) {
+                abortController.abort();
+            }
+
+            abortController = new AbortController();
+            const params = new URLSearchParams({ network, cidr });
+
+            fetch(`${calculateUrl}?${params.toString()}`, {
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: abortController.signal,
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        return response.json().then((data) => {
+                            const errorMessage = data?.error || 'Unable to calculate IP range.';
+                            throw new Error(errorMessage);
+                        });
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    if (!data) {
+                        return;
+                    }
+
+                    gatewayInput.value = data.gateway || '';
+                    broadcastInput.value = data.broadcast || '';
+                    availableIpsInput.value = data.available_ips || '';
+
+                    if (data.cidr && data.cidr.toString() !== cidrInput.value.trim()) {
+                        cidrInput.value = data.cidr;
+                    }
+                })
+                .catch((error) => {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    console.error('Failed to calculate IP range', error);
+                    resetFields();
+                });
+        };
+
+        const scheduleCalculation = () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            debounceTimer = setTimeout(performCalculation, 300);
+        };
+
+        networkInput.addEventListener('input', scheduleCalculation);
+        cidrInput.addEventListener('input', scheduleCalculation);
+
+        if (networkInput.value && cidrInput.value) {
+            performCalculation();
+        }
+    }
+
     function attachLocationSiteFormHandlers(container, modal) {
         const formElement = container.querySelector('#location-site-form');
         if (!formElement) {
+            return;
+        }
+
+        setupLocationSiteAutoCalculation(container);
+
+        if (!modal) {
             return;
         }
 
@@ -282,6 +384,7 @@
         const locationDetailTitle = document.getElementById('locationModalLabel');
 
         setupSearch();
+        setupLocationSiteAutoCalculation(document);
 
         document.addEventListener('click', (event) => {
             const trigger = event.target.closest('[data-action]');
