@@ -49,11 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleElementCollection('.card', 'dark-mode', true);
         toggleElementCollection('.table', 'dark-mode', true);
         toggleElementCollection('.btn-outline-secondary', 'dark-mode', true);
+        toggleElementCollection('.accordion-item', 'dark-mode', true);
+        toggleElementCollection('.accordion-button', 'dark-mode', true);
+        toggleElementCollection('.accordion-body', 'dark-mode', true);
+        toggleElementCollection('.modal-content', 'dark-mode', true);
+        toggleElementCollection('.form-control', 'dark-mode', true);
+        toggleElementCollection('.form-select', 'dark-mode', true);
+        toggleElementCollection('.input-group-text', 'dark-mode', true);
         const mainElement = document.querySelector('main');
         if (mainElement) {
             mainElement.classList.add('dark-mode');
         }
-        toggleElementCollection('.modal-content', 'dark-mode', true);
         toggleElementCollection('.accordion', 'dark-mode', true);
         themeToggleBtn.innerHTML = '<i class="bi bi-sun-fill"></i>';
         localStorage.setItem('theme', 'dark');
@@ -67,11 +73,17 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleElementCollection('.card', 'dark-mode', false);
         toggleElementCollection('.table', 'dark-mode', false);
         toggleElementCollection('.btn-outline-secondary', 'dark-mode', false);
+        toggleElementCollection('.accordion-item', 'dark-mode', false);
+        toggleElementCollection('.accordion-button', 'dark-mode', false);
+        toggleElementCollection('.accordion-body', 'dark-mode', false);
+        toggleElementCollection('.modal-content', 'dark-mode', false);
+        toggleElementCollection('.form-control', 'dark-mode', false);
+        toggleElementCollection('.form-select', 'dark-mode', false);
+        toggleElementCollection('.input-group-text', 'dark-mode', false);
         const mainElement = document.querySelector('main');
         if (mainElement) {
             mainElement.classList.remove('dark-mode');
         }
-        toggleElementCollection('.modal-content', 'dark-mode', false);
         toggleElementCollection('.accordion', 'dark-mode', false);
         themeToggleBtn.innerHTML = '<i class="bi bi-moon-fill"></i>';
         localStorage.setItem('theme', 'light');
