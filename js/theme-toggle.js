@@ -1,18 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const themeToggleBtn = document.getElementById('theme-toggle');
-    if (!themeToggleBtn) {
-        return;
-    }
+    if (!themeToggleBtn) return;
+
     const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') enableDarkMode();
+    else enableLightMode();
 
-    // Apply the saved theme on load
-    if (currentTheme === 'dark') {
-        enableDarkMode();
-    } else {
-        enableLightMode();
-    }
-
-    // Toggle theme on button click
     themeToggleBtn.addEventListener('click', () => {
         if (document.body.classList.contains('dark-mode')) {
             enableLightMode();
@@ -23,44 +16,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function styleNavbarForTheme(isDark) {
         const navbar = document.querySelector('.navbar');
-        if (!navbar) {
-            return;
-        }
-
-        if (isDark) {
-            navbar.classList.add('dark-mode', 'navbar-dark', 'bg-dark');
-            navbar.classList.remove('navbar-light', 'bg-white');
-        } else {
-            navbar.classList.remove('dark-mode', 'navbar-dark', 'bg-dark');
-            navbar.classList.add('navbar-light', 'bg-white');
-        }
+        if (!navbar) return;
+        navbar.classList.toggle('dark-mode', isDark);
+        navbar.classList.toggle('navbar-dark', isDark);
+        navbar.classList.toggle('bg-dark', isDark);
+        navbar.classList.toggle('navbar-light', !isDark);
+        navbar.classList.toggle('bg-white', !isDark);
     }
 
     function toggleElementCollection(selector, className, enable) {
-        document.querySelectorAll(selector).forEach((element) => {
-            element.classList.toggle(className, enable);
+        document.querySelectorAll(selector).forEach((el) => {
+            el.classList.toggle(className, enable);
         });
     }
 
     function enableDarkMode() {
         document.body.classList.add('dark-mode', 'bg-dark', 'text-light');
         document.body.classList.remove('bg-light', 'text-dark');
+
         styleNavbarForTheme(true);
-        toggleElementCollection('.card', 'dark-mode', true);
-        toggleElementCollection('.table', 'dark-mode', true);
-        toggleElementCollection('.btn-outline-secondary', 'dark-mode', true);
-        toggleElementCollection('.accordion-item', 'dark-mode', true);
-        toggleElementCollection('.accordion-button', 'dark-mode', true);
-        toggleElementCollection('.accordion-body', 'dark-mode', true);
-        toggleElementCollection('.modal-content', 'dark-mode', true);
-        toggleElementCollection('.form-control', 'dark-mode', true);
-        toggleElementCollection('.form-select', 'dark-mode', true);
-        toggleElementCollection('.input-group-text', 'dark-mode', true);
+
+        const selectors = [
+            '.card', '.table', '.btn-outline-secondary', '.accordion-item',
+            '.accordion-button', '.accordion-body', '.modal-content',
+            '.form-control', '.form-select', '.input-group-text',
+            '.accordion', '.table-responsive'
+        ];
+        selectors.forEach(sel => toggleElementCollection(sel, 'dark-mode', true));
+
+        // Force override for Bootstrap table-light
+        document.querySelectorAll('.table-light').forEach(el => el.classList.remove('table-light'));
+
+        // Make sure all <thead> and <tbody> inherit dark colors
+        document.querySelectorAll('.table thead, .table tbody').forEach(el => el.classList.add('dark-mode'));
+
         const mainElement = document.querySelector('main');
-        if (mainElement) {
-            mainElement.classList.add('dark-mode');
-        }
-        toggleElementCollection('.accordion', 'dark-mode', true);
+        if (mainElement) mainElement.classList.add('dark-mode');
+
         themeToggleBtn.innerHTML = '<i class="bi bi-sun-fill"></i>';
         localStorage.setItem('theme', 'dark');
         document.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: 'dark' } }));
@@ -69,22 +61,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function enableLightMode() {
         document.body.classList.remove('dark-mode', 'bg-dark', 'text-light');
         document.body.classList.add('bg-light', 'text-dark');
+
         styleNavbarForTheme(false);
-        toggleElementCollection('.card', 'dark-mode', false);
-        toggleElementCollection('.table', 'dark-mode', false);
-        toggleElementCollection('.btn-outline-secondary', 'dark-mode', false);
-        toggleElementCollection('.accordion-item', 'dark-mode', false);
-        toggleElementCollection('.accordion-button', 'dark-mode', false);
-        toggleElementCollection('.accordion-body', 'dark-mode', false);
-        toggleElementCollection('.modal-content', 'dark-mode', false);
-        toggleElementCollection('.form-control', 'dark-mode', false);
-        toggleElementCollection('.form-select', 'dark-mode', false);
-        toggleElementCollection('.input-group-text', 'dark-mode', false);
+
+        const selectors = [
+            '.card', '.table', '.btn-outline-secondary', '.accordion-item',
+            '.accordion-button', '.accordion-body', '.modal-content',
+            '.form-control', '.form-select', '.input-group-text',
+            '.accordion', '.table-responsive'
+        ];
+        selectors.forEach(sel => toggleElementCollection(sel, 'dark-mode', false));
+
+        // Reapply Bootstrap light table header class
+        document.querySelectorAll('thead').forEach(el => el.classList.add('table-light'));
+
         const mainElement = document.querySelector('main');
-        if (mainElement) {
-            mainElement.classList.remove('dark-mode');
-        }
-        toggleElementCollection('.accordion', 'dark-mode', false);
+        if (mainElement) mainElement.classList.remove('dark-mode');
+
         themeToggleBtn.innerHTML = '<i class="bi bi-moon-fill"></i>';
         localStorage.setItem('theme', 'light');
         document.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: 'light' } }));
