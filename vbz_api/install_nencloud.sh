@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.4.0"
+SCRIPT_VERSION="1.5.0"
 
 # Print colored output
 print_info() {
@@ -158,8 +158,103 @@ import tempfile
 import shutil
 from pathlib import Path
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import time
+import re
+import subprocess
+
+
+class GPIOMonitor:
+    """Monitor GPIO status from debugfs."""
+    
+    def __init__(self):
+        self.gpio_debug_path = '/sys/kernel/debug/gpio'
+        self.chip_name = 'gpio-f81964-0'
+        
+    def ensure_debugfs_mounted(self) -> bool:
+        """Ensure debugfs is mounted."""
+        try:
+            subprocess.run(
+                ['mount', '-t', 'debugfs', 'none', '/sys/kernel/debug'],
+                capture_output=True,
+                timeout=5
+            )
+            return True
+        except Exception:
+            return False
+    
+    def read_gpio_status(self) -> Optional[List[Dict[str, Any]]]:
+        """Read and parse GPIO status from debugfs."""
+        try:
+            # Ensure debugfs is mounted
+            if not os.path.exists(self.gpio_debug_path):
+                self.ensure_debugfs_mounted()
+            
+            if not os.path.exists(self.gpio_debug_path):
+                return None
+            
+            # Read the GPIO debug file
+            with open(self.gpio_debug_path, 'r') as f:
+                content = f.read()
+            
+            # Extract the gpio-f81964-0 section
+            gpio_section = self._extract_chip_section(content)
+            
+            if not gpio_section:
+                return None
+            
+            # Parse GPIO lines
+            return self._parse_gpio_lines(gpio_section)
+            
+        except Exception as e:
+            print(f"Error reading GPIO status: {e}")
+            return None
+    
+    def _extract_chip_section(self, content: str) -> str:
+        """Extract the gpio-f81964-0 section from GPIO debug output."""
+        lines = content.split('\\n')
+        section_lines = []
+        in_section = False
+        
+        for line in lines:
+            if self.chip_name in line:
+                in_section = True
+                section_lines.append(line)
+            elif in_section:
+                if line.strip() == '' or line.startswith('gpiochip'):
+                    break
+                section_lines.append(line)
+        
+        return '\\n'.join(section_lines)
+    
+    def _parse_gpio_lines(self, section: str) -> List[Dict[str, Any]]:
+        """Parse GPIO lines into structured data."""
+        gpio_pins = []
+        lines = section.split('\\n')
+        
+        for line in lines:
+            # Skip header line
+            if self.chip_name in line or not line.strip():
+                continue
+            
+            # Parse GPIO line format: " gpio-480 (                    |sysfs               ) in  hi"
+            # or: " gpio-480 (                    |GPIO0               ) out lo"
+            match = re.search(r'gpio-(\d+)\s+\([^|]*\|([^)]*)\)\s+(in|out)\s+(hi|lo)', line)
+            
+            if match:
+                pin_number = int(match.group(1))
+                label = match.group(2).strip() or f"GPIO{pin_number}"
+                direction = match.group(3)
+                value = match.group(4)
+                
+                gpio_pins.append({
+                    'pin': pin_number,
+                    'label': label,
+                    'direction': direction,
+                    'value': value
+                })
+        
+        return gpio_pins
 
 
 class NencloudClient:
@@ -228,6 +323,33 @@ class NencloudClient:
         except requests.exceptions.RequestException as e:
             print(f"✗ Failed to fetch configuration: {e}")
             raise
+    
+    def send_gpio_status(self, gpio_data: List[Dict[str, Any]]) -> bool:
+        """Send GPIO status to server."""
+        if not self.location_id:
+            return False  # GPIO status only for location-specific clients
+        
+        url = f"{self.server_url}/api/gpio-status/{self.location_id}/"
+        
+        headers = {
+            'Authorization': f'Token {self.auth_token}',
+            'X-API-Username': self.api_username,
+            'Content-Type': 'application/json'
+        }
+        
+        try:
+            response = requests.post(
+                url, 
+                headers=headers, 
+                json={'gpio_data': gpio_data},
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            return True
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Warning: Failed to send GPIO status: {e}")
+            return False
 
 
 class ConfigSyncer:
@@ -488,8 +610,12 @@ configure_client() {
     print_info "Using config directory: $APP_CONFIG_DIR"
     
     # Sync interval
-    read -p "Enter sync interval in minutes [5]: " SYNC_INTERVAL
-    SYNC_INTERVAL=${SYNC_INTERVAL:-5}
+    read -p "Enter sync interval in minutes [1]: " SYNC_INTERVAL
+    SYNC_INTERVAL=${SYNC_INTERVAL:-1}
+    
+    # GPIO status interval
+    read -p "Enter GPIO status reporting interval in seconds [5]: " GPIO_INTERVAL
+    GPIO_INTERVAL=${GPIO_INTERVAL:-5}
     
     # Create config file
     cat > $CONFIG_DIR/client.json << EOF
@@ -502,6 +628,7 @@ configure_client() {
   "config_directory": "$APP_CONFIG_DIR",
   "backup_dir": "$APP_CONFIG_DIR/backups",
   "sync_interval_minutes": $SYNC_INTERVAL,
+  "gpio_status_interval_seconds": $GPIO_INTERVAL,
   "timeout_seconds": 30
 }
 EOF
@@ -535,17 +662,19 @@ import sys
 import time
 import signal
 import logging
+import threading
 from pathlib import Path
 
 # Add the install directory to Python path
 sys.path.insert(0, '/opt/nencloud')
-from nencloud_client import NencloudClient, ConfigSyncer
+from nencloud_client import NencloudClient, ConfigSyncer, GPIOMonitor
 
 
 class NencloudDaemon:
     def __init__(self, config_path: str):
         self.config_path = config_path
         self.running = False
+        self.gpio_thread = None
         self.setup_logging()
         self.load_config()
         
@@ -577,11 +706,15 @@ class NencloudDaemon:
             
             self.client = NencloudClient(self.server_url, self.auth_token, self.api_username, self.location_id)
             self.syncer = ConfigSyncer(self.local_config_path, self.backup_dir)
+            self.gpio_monitor = GPIOMonitor() if self.location_id else None
+            self.gpio_interval = config.get('gpio_status_interval_seconds', 5)
             
             self.logger.info(f"Configuration loaded: {self.config_path}")
             self.logger.info(f"Server: {self.server_url}")
             self.logger.info(f"Location: {self.location_id or 'Global'}")
             self.logger.info(f"Sync interval: {self.sync_interval} seconds")
+            if self.gpio_monitor:
+                self.logger.info(f"GPIO monitoring: enabled (interval: {self.gpio_interval}s)")
             
         except Exception as e:
             self.logger.error(f"Failed to load configuration: {e}")
@@ -630,6 +763,33 @@ class NencloudDaemon:
         except Exception as e:
             self.logger.error(f"Error restarting nencloud service: {e}")
     
+    def gpio_monitoring_loop(self):
+        """Separate thread for GPIO status monitoring and reporting."""
+        self.logger.info("Starting GPIO monitoring thread...")
+        
+        while self.running:
+            try:
+                # Read GPIO status
+                gpio_data = self.gpio_monitor.read_gpio_status()
+                
+                if gpio_data:
+                    # Send to server
+                    success = self.client.send_gpio_status(gpio_data)
+                    if success:
+                        self.logger.debug(f"GPIO status sent: {len(gpio_data)} pins")
+                    else:
+                        self.logger.warning("Failed to send GPIO status")
+                else:
+                    self.logger.debug("No GPIO data available")
+                
+            except Exception as e:
+                self.logger.error(f"GPIO monitoring error: {e}")
+            
+            # Wait for next interval
+            time.sleep(self.gpio_interval)
+        
+        self.logger.info("GPIO monitoring thread stopped")
+    
     
     def run(self):
         """Main daemon loop."""
@@ -640,6 +800,12 @@ class NencloudDaemon:
         signal.signal(signal.SIGINT, self.signal_handler)
         
         self.running = True
+        
+        # Start GPIO monitoring thread if location-specific
+        if self.gpio_monitor:
+            self.gpio_thread = threading.Thread(target=self.gpio_monitoring_loop, daemon=True)
+            self.gpio_thread.start()
+            self.logger.info("GPIO monitoring thread started")
         
         # Initial sync
         self.sync_config()
@@ -653,6 +819,10 @@ class NencloudDaemon:
             except Exception as e:
                 self.logger.error(f"Daemon error: {e}")
                 time.sleep(60)  # Wait a minute before retrying
+        
+        # Wait for GPIO thread to finish
+        if self.gpio_thread and self.gpio_thread.is_alive():
+            self.gpio_thread.join(timeout=5)
         
         self.logger.info("Daemon stopped")
 
@@ -671,6 +841,24 @@ EOF
     chown $USER_NAME:$USER_NAME $INSTALL_DIR/nencloud_daemon.py
     
     print_success "Daemon script created"
+}
+
+# Setup debugfs mount
+setup_debugfs() {
+    print_info "Setting up debugfs for GPIO monitoring..."
+    
+    # Mount debugfs now
+    mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
+    
+    # Check if already in fstab
+    if ! grep -q "debugfs.*\/sys\/kernel\/debug" /etc/fstab 2>/dev/null; then
+        echo "debugfs /sys/kernel/debug debugfs defaults 0 0" >> /etc/fstab
+        print_success "Added debugfs to /etc/fstab for automatic mounting on boot"
+    else
+        print_info "debugfs already in /etc/fstab"
+    fi
+    
+    print_success "debugfs mounted and configured"
 }
 
 # Create systemd service
@@ -694,11 +882,11 @@ RestartSec=10
 StandardOutput=journal
 StandardError=journal
 
- # Security settings (simplified to avoid namespace issues)
- NoNewPrivileges=true
- PrivateTmp=false
- ProtectSystem=false
- ProtectHome=false
+# Security settings (simplified to avoid namespace issues)
+NoNewPrivileges=true
+PrivateTmp=false
+ProtectSystem=false
+ProtectHome=false
 
 [Install]
 WantedBy=multi-user.target
@@ -1004,6 +1192,7 @@ main() {
     download_client_files
     configure_client
     create_daemon
+    setup_debugfs
     create_service
     setup_logging
     setup_polkit
