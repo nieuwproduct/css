@@ -26,7 +26,7 @@ CONFIG_DIR="/etc/nencloud"
 LOG_DIR="/var/log/nencloud"
 SERVICE_NAME="nencloud-client"
 USER_NAME="developer"
-SCRIPT_VERSION="1.5.0"
+SCRIPT_VERSION="1.5.6"
 
 # Print colored output
 print_info() {
@@ -168,69 +168,43 @@ class GPIOMonitor:
     """Monitor GPIO status from debugfs."""
     
     def __init__(self):
-        self.gpio_debug_path = '/sys/kernel/debug/gpio'
+        self.gpio_reader_script = '/opt/nencloud/read_gpio.sh'
         self.chip_name = 'gpio-f81964-0'
-        
-    def ensure_debugfs_mounted(self) -> bool:
-        """Ensure debugfs is mounted."""
-        try:
-            subprocess.run(
-                ['mount', '-t', 'debugfs', 'none', '/sys/kernel/debug'],
-                capture_output=True,
-                timeout=5
-            )
-            return True
-        except Exception:
-            return False
     
     def read_gpio_status(self) -> Optional[List[Dict[str, Any]]]:
-        """Read and parse GPIO status from debugfs."""
+        """Read and parse GPIO status from debugfs using sudo wrapper."""
         try:
-            # Ensure debugfs is mounted
-            if not os.path.exists(self.gpio_debug_path):
-                self.ensure_debugfs_mounted()
+            # Run the GPIO reader script with sudo
+            result = subprocess.run(
+                ['sudo', self.gpio_reader_script],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
             
-            if not os.path.exists(self.gpio_debug_path):
+            if result.returncode != 0:
+                print(f"GPIO reader script failed: {result.stderr}")
                 return None
             
-            # Read the GPIO debug file
-            with open(self.gpio_debug_path, 'r') as f:
-                content = f.read()
+            content = result.stdout
             
-            # Extract the gpio-f81964-0 section
-            gpio_section = self._extract_chip_section(content)
-            
-            if not gpio_section:
+            if not content or 'ERROR' in content:
                 return None
             
-            # Parse GPIO lines
-            return self._parse_gpio_lines(gpio_section)
+            # Parse GPIO lines (content is already the gpio-f81964-0 section)
+            return self._parse_gpio_lines(content)
             
+        except subprocess.TimeoutExpired:
+            print("GPIO read timeout")
+            return None
         except Exception as e:
             print(f"Error reading GPIO status: {e}")
             return None
     
-    def _extract_chip_section(self, content: str) -> str:
-        """Extract the gpio-f81964-0 section from GPIO debug output."""
-        lines = content.split('\\n')
-        section_lines = []
-        in_section = False
-        
-        for line in lines:
-            if self.chip_name in line:
-                in_section = True
-                section_lines.append(line)
-            elif in_section:
-                if line.strip() == '' or line.startswith('gpiochip'):
-                    break
-                section_lines.append(line)
-        
-        return '\\n'.join(section_lines)
-    
     def _parse_gpio_lines(self, section: str) -> List[Dict[str, Any]]:
         """Parse GPIO lines into structured data."""
         gpio_pins = []
-        lines = section.split('\\n')
+        lines = section.split('\n')
         
         for line in lines:
             # Skip header line
@@ -298,7 +272,7 @@ class NencloudClient:
             return False
         
     def get_config(self) -> Dict[str, Any]:
-        """Fetch configuration from server."""
+        """Fetch configuration from server (returns config for daemon use)."""
         if self.location_id:
             url = f"{self.server_url}/api/config/{self.location_id}/"
         else:
@@ -316,9 +290,19 @@ class NencloudClient:
             response = requests.get(url, headers=headers, timeout=self.timeout)
             response.raise_for_status()
             
-            config = response.json()
+            data = response.json()
             print(f"✓ Successfully fetched configuration ({len(response.content)} bytes)")
-            return config
+            
+            # API returns the config directly (NOT wrapped in merged_config)
+            # Validate that we got actual config data
+            if not data or not isinstance(data, dict):
+                raise ValueError(f"Invalid config response: {type(data)}")
+            
+            # Check if it's actually empty (which would corrupt the file)
+            if data == {}:
+                raise ValueError("Server returned empty config - refusing to save")
+            
+            return data
             
         except requests.exceptions.RequestException as e:
             print(f"✗ Failed to fetch configuration: {e}")
@@ -843,22 +827,61 @@ EOF
     print_success "Daemon script created"
 }
 
-# Setup debugfs mount
+# Setup debugfs mount and GPIO access
 setup_debugfs() {
     print_info "Setting up debugfs for GPIO monitoring..."
     
-    # Mount debugfs now
+    # Mount debugfs
     mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
     
-    # Check if already in fstab
+    # Add to fstab for automatic mounting
     if ! grep -q "debugfs.*\/sys\/kernel\/debug" /etc/fstab 2>/dev/null; then
         echo "debugfs /sys/kernel/debug debugfs defaults 0 0" >> /etc/fstab
-        print_success "Added debugfs to /etc/fstab for automatic mounting on boot"
-    else
-        print_info "debugfs already in /etc/fstab"
+        print_info "Added debugfs to /etc/fstab"
     fi
     
-    print_success "debugfs mounted and configured"
+    # Create GPIO reader wrapper script that runs with sudo
+    cat > $INSTALL_DIR/read_gpio.sh << 'GPIOEOF'
+#!/bin/bash
+# GPIO reader wrapper script
+# Mounts debugfs if needed and reads GPIO status
+mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
+if [ -f "/sys/kernel/debug/gpio" ]; then
+    sed -n '/gpio-f81964-0/,/^$/p' /sys/kernel/debug/gpio
+else
+    echo "ERROR: GPIO debugfs not available"
+    exit 1
+fi
+GPIOEOF
+    
+    chmod +x $INSTALL_DIR/read_gpio.sh
+    chown root:root $INSTALL_DIR/read_gpio.sh
+    
+    # Add sudoers rule to allow developer user to run GPIO reader without password
+    cat > /etc/sudoers.d/nencloud-gpio << 'SUDOEOF'
+# Allow developer user to read GPIO status without password
+developer ALL=(root) NOPASSWD: /opt/nencloud/read_gpio.sh
+SUDOEOF
+    
+    chmod 440 /etc/sudoers.d/nencloud-gpio
+    
+    # Validate sudoers file
+    visudo -c -f /etc/sudoers.d/nencloud-gpio
+    if [ $? -eq 0 ]; then
+        print_success "Sudoers rule created for GPIO access"
+    else
+        print_error "Failed to create sudoers rule"
+        rm -f /etc/sudoers.d/nencloud-gpio
+    fi
+    
+    # Test GPIO access as developer user
+    if sudo -u $USER_NAME sudo $INSTALL_DIR/read_gpio.sh > /dev/null 2>&1; then
+        print_success "GPIO access verified for $USER_NAME user"
+    else
+        print_warning "Could not verify GPIO access. GPIO monitoring may not work."
+    fi
+    
+    print_success "debugfs and GPIO access configured"
 }
 
 # Create systemd service
@@ -882,8 +905,9 @@ RestartSec=10
 StandardOutput=journal
 StandardError=journal
 
-# Security settings (simplified to avoid namespace issues)
-NoNewPrivileges=true
+# Security settings
+# Note: NoNewPrivileges must be false to allow GPIO access via sudo
+NoNewPrivileges=false
 PrivateTmp=false
 ProtectSystem=false
 ProtectHome=false
@@ -1081,6 +1105,9 @@ update() {
     download_client_files
     create_daemon
     
+    # Update/verify GPIO access (sudoers and reader script)
+    setup_debugfs
+    
     # Update systemd service
     create_service
     
@@ -1094,6 +1121,22 @@ update() {
     if systemctl is-active --quiet $SERVICE_NAME; then
         print_success "Update completed successfully!"
         print_info "Service restarted and is running."
+        
+        # Verify GPIO access
+        echo
+        print_info "Verifying GPIO access..."
+        if sudo -u $USER_NAME sudo $INSTALL_DIR/read_gpio.sh > /dev/null 2>&1; then
+            print_success "GPIO access working"
+        else
+            print_warning "GPIO access may not be working - check logs"
+        fi
+        
+        # Check for sudo errors in recent logs
+        sleep 2
+        if journalctl -u $SERVICE_NAME --since "10 seconds ago" | grep -q "pam_unix.*auth"; then
+            print_warning "Detected authentication errors in logs - GPIO may not be working"
+            print_info "Check with: journalctl -u $SERVICE_NAME -f"
+        fi
     else
         print_warning "Update completed but service failed to start."
         print_info "Check logs with: journalctl -u $SERVICE_NAME"
